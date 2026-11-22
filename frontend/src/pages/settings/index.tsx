@@ -1,20 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Building2, Save, Loader2, Upload, Image, FileImage } from "lucide-react";
+import { Save, Loader2, Upload, FileImage, SlidersHorizontal, RefreshCw } from "lucide-react";
 import { settingsApi } from "@/lib/api";
 
-// Get base URL without /api suffix
 const getBaseUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
   return apiUrl.replace(/\/api$/, '');
@@ -22,36 +12,33 @@ const getBaseUrl = () => {
 const BASE_URL = getBaseUrl();
 
 export default function SettingsPage() {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [appName, setAppName] = useState("StarterKits");
-  const [appSubtitle, setAppSubtitle] = useState("Hospital System");
+  const [appName, setAppName] = useState("DimsKits");
+  const [appSubtitle, setAppSubtitle] = useState("Dims Webs");
   const [appLogo, setAppLogo] = useState("");
   const [appFavicon, setAppFavicon] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [fetching, setFetching] = useState(true);
-  
+
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
-  // Set page title
   useEffect(() => {
-    const savedAppName = localStorage.getItem("appName") || "StarterKits";
+    const savedAppName = localStorage.getItem("appName") || "DimsKits";
     document.title = `Settings - ${savedAppName}`;
   }, []);
 
-  // Load settings from API and localStorage on mount
   useEffect(() => {
     loadSettings();
   }, []);
 
   const loadSettings = async () => {
+    setFetching(true);
     try {
-      // Load from API
       const response = await settingsApi.getAll();
-      const settings = response.data.data;
+      const settings = response.data?.data || {};
 
       if (settings.app_name) {
         setAppName(settings.app_name);
@@ -68,7 +55,6 @@ export default function SettingsPage() {
       if (settings.app_favicon) {
         setAppFavicon(settings.app_favicon);
         localStorage.setItem("appFavicon", settings.app_favicon);
-        // Update favicon in document
         updateFavicon(settings.app_favicon);
       }
     } catch (error) {
@@ -100,17 +86,16 @@ export default function SettingsPage() {
       setAppLogo(url);
       localStorage.setItem("appLogo", url);
       window.dispatchEvent(new Event("storage"));
-      
       toast({
         variant: "success",
-        title: "Success!",
-        description: "Logo uploaded successfully.",
+        title: "Sukses!",
+        description: "Logo berhasil diupload.",
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Error!",
-        description: "Failed to upload logo.",
+        description: "Gagal mengupload logo.",
       });
     } finally {
       setUploadingLogo(false);
@@ -128,17 +113,17 @@ export default function SettingsPage() {
       setAppFavicon(url);
       localStorage.setItem("appFavicon", url);
       updateFavicon(url);
-      
+      window.dispatchEvent(new Event("storage"));
       toast({
         variant: "success",
-        title: "Success!",
-        description: "Favicon uploaded successfully.",
+        title: "Sukses!",
+        description: "Favicon berhasil diupload.",
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Error!",
-        description: "Failed to upload favicon.",
+        description: "Gagal mengupload favicon.",
       });
     } finally {
       setUploadingFavicon(false);
@@ -148,246 +133,246 @@ export default function SettingsPage() {
   const handleSaveAppSettings = async () => {
     setLoading(true);
     try {
-      // Save to API
       await settingsApi.update({
         app_name: appName,
         app_subtitle: appSubtitle,
       });
 
-      // Save to localStorage
       localStorage.setItem("appName", appName);
       localStorage.setItem("appSubtitle", appSubtitle);
-
-      // Trigger storage event to update sidebar immediately
       window.dispatchEvent(new Event("storage"));
 
       toast({
         variant: "success",
-        title: "Success!",
-        description: "Application settings saved successfully.",
+        title: "Sukses!",
+        description: "Pengaturan aplikasi berhasil disimpan.",
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Error!",
-        description: "Failed to save settings. Please try again.",
+        description: "Gagal menyimpan pengaturan.",
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const getLogoPreviewUrl = () => {
+    if (appLogo && !appLogo.includes('1.png')) {
+      if (appLogo.startsWith('http://') || appLogo.startsWith('https://') || appLogo.startsWith('data:')) {
+        return appLogo;
+      }
+      return `${BASE_URL}${appLogo}`;
+    }
+    return '/logo.png';
+  };
+
+  const getFaviconPreviewUrl = () => {
+    if (appFavicon) {
+      if (appFavicon.startsWith('http://') || appFavicon.startsWith('https://') || appFavicon.startsWith('data:')) {
+        return appFavicon;
+      }
+      return `${BASE_URL}${appFavicon}`;
+    }
+    return '';
+  };
+
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 max-w-full">
-      <div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(-1)}
-          className="h-9 w-9"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      </div>
+    <div className="w-full max-w-full">
+      {/* ─── Satu Kontainer Card Utuh (Single Unified Card Container persis Jurnal) ──── */}
+      <div className="w-full border border-neutral-200 dark:border-neutral-800 rounded-none bg-white dark:bg-neutral-950 overflow-hidden shadow-none">
 
-      <div className="space-y-4 max-w-full">
-        {fetching ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {/* 1. Header Bar: Black Badge + Uppercase Title + Monospace Subtitle */}
+        <div className="px-4 py-3 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 flex items-center justify-center font-bold text-sm shrink-0">
+              <SlidersHorizontal className="size-4" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold uppercase tracking-tight text-neutral-900 dark:text-white">
+                PREFERENSI &amp; IDENTITAS SISTEM
+              </h1>
+              <p className="text-[11px] text-neutral-500 font-mono flex items-center gap-1.5">
+                <span>Konfigurasi nama aplikasi, subteks sidebar, logo branding, dan favicon browser</span>
+                {fetching && <RefreshCw className="size-3 animate-spin text-neutral-400 ml-1" />}
+              </p>
+            </div>
           </div>
-        ) : (
-          <>
-            {/* Application Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">
-                  Application
-                </CardTitle>
-                <CardDescription>
-                  Customize application name and branding
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="appName"
-                      className="text-xs font-medium flex items-center gap-2"
-                    >
-                      <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      Application Name
-                    </Label>
-                    <Input
-                      id="appName"
-                      value={appName}
-                      onChange={(e) => setAppName(e.target.value)}
-                      placeholder="StarterKits"
-                      className="max-w-md"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      This name will appear in the sidebar and page titles
-                    </p>
-                  </div>
+        </div>
 
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="appSubtitle"
-                      className="text-xs font-medium flex items-center gap-2"
-                    >
-                      <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      Application Subtitle
-                    </Label>
-                    <Input
-                      id="appSubtitle"
-                      value={appSubtitle}
-                      onChange={(e) => setAppSubtitle(e.target.value)}
-                      placeholder="Hospital System"
-                      className="max-w-md"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Subtitle text shown below the application name
-                    </p>
-                  </div>
+        {/* 2. Shaded Parameter Strip: Identitas Aplikasi */}
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/40">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                Nama Aplikasi
+              </label>
+              <Input
+                value={appName}
+                onChange={(e) => setAppName(e.target.value)}
+                placeholder="DimsKits"
+                className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none font-medium"
+              />
+              <p className="text-[10px] text-neutral-500 font-mono mt-1">
+                Tampil sebagai judul utama pada header sidebar dan tab browser
+              </p>
+            </div>
 
+            <div>
+              <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                Subteks Aplikasi
+              </label>
+              <Input
+                value={appSubtitle}
+                onChange={(e) => setAppSubtitle(e.target.value)}
+                placeholder="Dims Webs"
+                className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none font-medium"
+              />
+              <p className="text-[10px] text-neutral-500 font-mono mt-1">
+                Tampil tepat di bawah nama aplikasi pada header sidebar
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Subheader: Asset Visual & Branding */}
+        <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
+              ASSET VISUAL &amp; LOGO BRANDING
+            </span>
+            <p className="text-[11px] text-neutral-500 font-mono">
+              Kelola file visual logo sidebar dan favicon tab browser
+            </p>
+          </div>
+        </div>
+
+        {/* 4. Asset Upload Section */}
+        <div className="p-4 bg-white dark:bg-neutral-950">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Logo Upload Box */}
+            <div className="border border-neutral-200 dark:border-neutral-800 p-3 bg-neutral-50/40 dark:bg-neutral-900/40 rounded-none">
+              <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-2">
+                Logo Aplikasi (Sidebar Header)
+              </span>
+              <div className="flex items-center gap-3">
+                <div className="size-14 border border-neutral-200 dark:border-neutral-700 rounded-none flex items-center justify-center bg-white dark:bg-neutral-900 p-1 shrink-0 overflow-hidden">
+                  <img
+                    src={getLogoPreviewUrl()}
+                    alt="Logo"
+                    className="max-h-full max-w-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/logo.png';
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                    onChange={handleUploadLogo}
+                    className="hidden"
+                  />
                   <Button
-                    onClick={handleSaveAppSettings}
-                    className="mt-2"
-                    disabled={loading}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="h-7 rounded-none border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-xs font-medium px-2.5 shadow-none gap-1.5 hover:bg-neutral-100"
                   >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
+                    {uploadingLogo ? (
+                      <Loader2 className="size-3 animate-spin" />
                     ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </>
+                      <Upload className="size-3" />
                     )}
+                    <span>Pilih Logo Baru</span>
                   </Button>
+                  <p className="text-[10px] text-neutral-500 font-mono">
+                    PNG, JPG, atau SVG. Maksimal 2MB.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Branding Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">
-                  Branding
-                </CardTitle>
-                <CardDescription>
-                  Upload application logo and favicon
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  {/* Logo Upload */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium flex items-center gap-2">
-                      <Image className="h-3.5 w-3.5 text-muted-foreground" />
-                      Application Logo
-                    </Label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 border rounded-lg flex items-center justify-center bg-muted/30 overflow-hidden">
-                        {appLogo ? (
-                          <img 
-                            src={`${BASE_URL}${appLogo}`} 
-                            alt="Logo" 
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <Image className="h-8 w-8 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <input
-                          ref={logoInputRef}
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-                          onChange={handleUploadLogo}
-                          className="hidden"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => logoInputRef.current?.click()}
-                          disabled={uploadingLogo}
-                        >
-                          {uploadingLogo ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Logo
-                            </>
-                          )}
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                          PNG, JPG, or SVG. Max 2MB.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Favicon Upload */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium flex items-center gap-2">
-                      <FileImage className="h-3.5 w-3.5 text-muted-foreground" />
-                      Favicon
-                    </Label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 border rounded-lg flex items-center justify-center bg-muted/30 overflow-hidden">
-                        {appFavicon ? (
-                          <img 
-                            src={`${BASE_URL}${appFavicon}`} 
-                            alt="Favicon" 
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <FileImage className="h-8 w-8 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <input
-                          ref={faviconInputRef}
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg,image/x-icon,image/ico"
-                          onChange={handleUploadFavicon}
-                          className="hidden"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => faviconInputRef.current?.click()}
-                          disabled={uploadingFavicon}
-                        >
-                          {uploadingFavicon ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Favicon
-                            </>
-                          )}
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                          ICO, PNG, or JPG. 32x32 or 64x64 recommended.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+            {/* Favicon Upload Box */}
+            <div className="border border-neutral-200 dark:border-neutral-800 p-3 bg-neutral-50/40 dark:bg-neutral-900/40 rounded-none">
+              <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-2">
+                Favicon Browser (Tab Icon)
+              </span>
+              <div className="flex items-center gap-3">
+                <div className="size-14 border border-neutral-200 dark:border-neutral-700 rounded-none flex items-center justify-center bg-white dark:bg-neutral-900 p-1 shrink-0 overflow-hidden">
+                  {getFaviconPreviewUrl() ? (
+                    <img
+                      src={getFaviconPreviewUrl()}
+                      alt="Favicon"
+                      className="size-7 object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <FileImage className="size-6 text-neutral-400" />
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+                <div className="space-y-1.5">
+                  <input
+                    ref={faviconInputRef}
+                    type="file"
+                    accept="image/x-icon,image/png,image/svg+xml"
+                    onChange={handleUploadFavicon}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => faviconInputRef.current?.click()}
+                    disabled={uploadingFavicon}
+                    className="h-7 rounded-none border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-xs font-medium px-2.5 shadow-none gap-1.5 hover:bg-neutral-100"
+                  >
+                    {uploadingFavicon ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Upload className="size-3" />
+                    )}
+                    <span>Pilih Favicon</span>
+                  </Button>
+                  <p className="text-[10px] text-neutral-500 font-mono">
+                    ICO, PNG, atau SVG (Rekomendasi 32x32).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* 5. Footer Submission Bar */}
+        <div className="p-4 bg-white dark:bg-neutral-950 flex flex-col sm:flex-row sm:items-center justify-end gap-3 border-t border-neutral-200 dark:border-neutral-800">
+          <Button
+            type="button"
+            onClick={handleSaveAppSettings}
+            disabled={loading}
+            className="h-8 rounded-none bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:bg-neutral-800 text-xs px-3.5 gap-1.5 shadow-none"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                <span>Menyimpan...</span>
+              </>
+            ) : (
+              <>
+                <Save className="size-3.5" />
+                <span>Simpan Pengaturan</span>
+              </>
+            )}
+          </Button>
+        </div>
+
       </div>
     </div>
   );

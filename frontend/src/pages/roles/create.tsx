@@ -3,22 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { setPageTitle } from '@/lib/page-title';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { PermissionDetailModal } from '@/components/permission-detail-modal';
 import { rolesApi, permissionsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Shield, FileText, CheckSquare, Info, Package } from 'lucide-react';
+import { Loader2, Shield, ArrowLeft, Save, KeyRound } from 'lucide-react';
 
 export default function RoleCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [groupedPermissions, setGroupedPermissions] = useState<Record<string, any[]>>({});
-  const [selectedPermission, setSelectedPermission] = useState<any>(null);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -26,18 +20,17 @@ export default function RoleCreate() {
   });
 
   useEffect(() => {
-    setPageTitle('Create Role');
+    setPageTitle('Tambah Role');
     loadPermissions();
   }, []);
 
   const loadPermissions = async () => {
     try {
       const response = await permissionsApi.getAll();
-      const allPermissions = response.data.data;
+      const allPermissions = response.data.data || [];
       
-      // Group permissions by module
       const grouped = allPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
-        const module = permission.module || 'Other';
+        const module = permission.module || 'Umum';
         if (!acc[module]) {
           acc[module] = [];
         }
@@ -50,8 +43,10 @@ export default function RoleCreate() {
       toast({
         variant: "destructive",
         title: "Error!",
-        description: "Failed to load permissions.",
+        description: "Gagal memuat daftar permission.",
       });
+    } finally {
+      setFetching(false);
     }
   };
 
@@ -64,184 +59,271 @@ export default function RoleCreate() {
     }));
   };
 
-  const handleShowPermissionInfo = (permission: any) => {
-    setSelectedPermission(permission);
-    setShowPermissionModal(true);
+  const toggleModule = (moduleName: string) => {
+    const modulePermIds = (groupedPermissions[moduleName] || []).map(p => p.id);
+    const allSelected = modulePermIds.every(id => formData.permission_ids.includes(id));
+
+    if (allSelected) {
+      setFormData(prev => ({
+        ...prev,
+        permission_ids: prev.permission_ids.filter(id => !modulePermIds.includes(id))
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        permission_ids: Array.from(new Set([...prev.permission_ids, ...modulePermIds]))
+      }));
+    }
+  };
+
+  const allIds = Object.values(groupedPermissions).flatMap(list => list.map(p => p.id));
+
+  const selectAll = () => {
+    setFormData(prev => ({ ...prev, permission_ids: allIds }));
+  };
+
+  const deselectAll = () => {
+    setFormData(prev => ({ ...prev, permission_ids: [] }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error!",
+        description: "Nama role wajib diisi.",
+      });
+      return;
+    }
+
     setLoading(true);
-    
     try {
-      await rolesApi.create(formData);
+      await rolesApi.create({
+        ...formData,
+        name: formData.name.trim().toLowerCase().replace(/\s+/g, '_'),
+      });
       toast({
         variant: "success",
-        title: "Success!",
-        description: "Role created successfully.",
+        title: "Sukses!",
+        description: "Role baru berhasil ditambahkan.",
       });
       setTimeout(() => navigate('/roles'), 500);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error!",
-        description: error.response?.data?.error || "Failed to create role.",
+        description: error.response?.data?.error || "Gagal membuat role.",
       });
     } finally {
       setLoading(false);
     }
   };
 
+  if (fetching) {
+    return (
+      <div className="w-full border border-neutral-200 dark:border-neutral-800 rounded-none bg-white dark:bg-neutral-950 p-8 text-center text-xs text-neutral-500 font-mono">
+        <Loader2 className="size-4 animate-spin inline-block mr-2 text-neutral-400" />
+        Memuat data permission...
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-6">
-          <section className="space-y-5 rounded-lg border border-border/80 p-5">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
-                <Shield className="h-4 w-4 text-muted-foreground" />
-                Nama Role
-              </Label>
-              <Input
-                id="name"
-                required
-                placeholder="e.g., Admin"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="h-10"
-              />
+    <div className="w-full max-w-full">
+      {/* ─── Satu Kontainer Card Utuh (Single Unified Card Container persis Jurnal) ──── */}
+      <div className="w-full border border-neutral-200 dark:border-neutral-800 rounded-none bg-white dark:bg-neutral-950 overflow-hidden shadow-none">
+        
+        {/* 1. Header Bar: Icon-Only Back Button + Square Black Badge + Uppercase Title + Monospace Subtitle */}
+        <div className="px-4 py-3 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/roles')}
+              className="h-8 w-8 p-0 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-none text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              title="Kembali ke Daftar Role"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+
+            <div className="flex items-center gap-2.5">
+              <div className="size-8 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 flex items-center justify-center font-bold text-sm shrink-0">
+                <Shield className="size-4" />
+              </div>
+              <div>
+                <h1 className="text-sm font-bold uppercase tracking-tight text-neutral-900 dark:text-white">
+                  Tambah Role Baru
+                </h1>
+                <p className="text-[11px] text-neutral-500 font-mono">
+                  Definisi peran sistem dan matriks pembagian hak akses (permissions)
+                </p>
+              </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                Deskripsi
-              </Label>
-              <Textarea
-                id="description"
-                placeholder="Deskripsi role..."
-                value={formData.description}
-                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="min-h-[96px]"
-              />
-            </div>
-          </section>
-
-          <section className="space-y-4 rounded-lg border border-border/80 p-5">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                <CheckSquare className="h-4 w-4 text-muted-foreground" />
-                Permission Matrix
-              </Label>
-              <Badge variant="secondary" className="text-sm">{formData.permission_ids.length} dipilih</Badge>
-            </div>
-
-            <div className="max-h-[560px] overflow-y-auto rounded-md border">
-              {Object.entries(groupedPermissions).map(([module, modulePermissions]) => (
-                <div key={module} className="border-b last:border-b-0">
-                  <div className="border-b bg-muted/20 px-3 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="font-medium text-sm">{module}</h4>
-                        <Badge variant="outline" className="text-xs">
-                          {modulePermissions.filter(p => formData.permission_ids.includes(p.id)).length}/{modulePermissions.length}
-                        </Badge>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const modulePermIds = modulePermissions.map(p => p.id);
-                          const allSelected = modulePermIds.every(id => formData.permission_ids.includes(id));
-                          if (allSelected) {
-                            setFormData(prev => ({
-                              ...prev,
-                              permission_ids: prev.permission_ids.filter(id => !modulePermIds.includes(id)),
-                            }));
-                          } else {
-                            setFormData(prev => ({
-                              ...prev,
-                              permission_ids: [...new Set([...prev.permission_ids, ...modulePermIds])],
-                            }));
-                          }
-                        }}
-                        className="text-xs"
-                      >
-                        {modulePermissions.every(p => formData.permission_ids.includes(p.id)) ? 'Clear' : 'Select'}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 p-3">
-                    {modulePermissions.map(perm => (
-                      <div key={perm.id} className="flex items-center space-x-3 rounded-md border p-2.5 transition-colors hover:bg-muted/30">
-                        <Checkbox
-                          id={`perm-${perm.id}`}
-                          checked={formData.permission_ids.includes(perm.id)}
-                          onCheckedChange={() => handlePermissionToggle(perm.id)}
-                        />
-                        <div className="flex-1 flex items-center justify-between">
-                          <div className="space-y-1">
-                            <label htmlFor={`perm-${perm.id}`} className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2">
-                              {perm.name}
-                              <Badge variant="secondary" className="text-xs">{perm.category}</Badge>
-                            </label>
-                            {perm.description && <p className="text-xs text-muted-foreground">{perm.description}</p>}
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleShowPermissionInfo(perm)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Info className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {Object.keys(groupedPermissions).length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-sm">Tidak ada permission tersedia.</p>
-                </div>
-              )}
-            </div>
-          </section>
+          </div>
         </div>
 
-        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <div className="rounded-lg border border-border/80 p-4 text-sm">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role Preview</p>
-            <p className="font-medium">{formData.name || 'Nama role belum diisi'}</p>
-            <p className="mt-1 text-muted-foreground line-clamp-3">{formData.description || 'Deskripsi role belum diisi.'}</p>
-            <p className="mt-3 text-muted-foreground">Total permission: {formData.permission_ids.length}</p>
-          </div>
+        {/* Form Container */}
+        <form onSubmit={handleSubmit}>
+          <div className="p-4 space-y-4">
+            {/* 2. Form Parameters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Kode Role */}
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                  System Code Role <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  id="name"
+                  required
+                  placeholder="Contoh: manager_keuangan"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none font-mono"
+                  autoFocus
+                />
+                <p className="text-[10px] text-neutral-500 font-mono mt-1">Format kode: huruf kecil tanpa spasi (gunakan underscore)</p>
+              </div>
 
-          <div className="rounded-lg border border-border/80 p-3">
-            <div className="flex flex-col gap-2">
-              <Button type="submit" disabled={loading} className="h-10">
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Simpan Role
-              </Button>
-              <Button type="button" variant="outline" onClick={() => navigate('/roles')} className="h-10">
-                Batal
-              </Button>
+              {/* Deskripsi Wewenang */}
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                  Deskripsi Peran &amp; Wewenang
+                </label>
+                <Input
+                  id="description"
+                  placeholder="Deskripsi tugas dan tanggung jawab peran..."
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none"
+                />
+              </div>
+            </div>
+
+            {/* 3. Subheader: Permissions Action Strip */}
+            <div className="space-y-3 pt-3 border-t border-neutral-200 dark:border-neutral-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                    <KeyRound className="size-3.5 text-neutral-600" />
+                    Penetapan Hak Akses ({formData.permission_ids.length} Dipilih)
+                  </span>
+                  <p className="text-[11px] text-neutral-500 font-mono">
+                    Pilih izin akses fitur sistem yang diberikan kepada peran ini
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAll}
+                    className="h-7 text-xs rounded-none border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 shadow-none px-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                  >
+                    Pilih Semua ({allIds.length})
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={deselectAll}
+                    className="h-7 text-xs rounded-none border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 shadow-none px-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                  >
+                    Kosongkan
+                  </Button>
+                </div>
+              </div>
+
+              {/* 4. Permissions Matrix Scroll Box (Bounded Height persis Go-Akuntansi) */}
+              <div className="space-y-3 max-h-[380px] overflow-y-auto pr-2 border border-neutral-200 dark:border-neutral-800 p-3 rounded-none bg-neutral-50/20">
+                {Object.entries(groupedPermissions).map(([module, permissions]) => {
+                  const modulePermIds = permissions.map(p => p.id);
+                  const allChecked = modulePermIds.every(id => formData.permission_ids.includes(id));
+                  const selectedCount = permissions.filter(p => formData.permission_ids.includes(p.id)).length;
+
+                  return (
+                    <div key={module} className="border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 rounded-none p-2.5 space-y-2">
+                      <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wide">
+                            Modul: {module}
+                          </span>
+                          <span className="text-[10px] font-mono text-neutral-500">
+                            ({selectedCount}/{permissions.length})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleModule(module)}
+                          className="text-[11px] font-medium text-neutral-500 hover:text-black dark:hover:text-white underline cursor-pointer"
+                        >
+                          {allChecked ? 'Batal Pilih Modul' : 'Pilih Semua Modul'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        {permissions.map((p: any) => {
+                          const isChecked = formData.permission_ids.includes(p.id);
+                          return (
+                            <label
+                              key={p.id}
+                              className={`flex items-start gap-2 p-2 border text-xs cursor-pointer rounded-none transition-colors ${
+                                isChecked
+                                  ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white'
+                                  : 'bg-neutral-50/50 hover:bg-neutral-100/50 border-neutral-200 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handlePermissionToggle(p.id)}
+                                className="mt-0.5 rounded-none cursor-pointer"
+                              />
+                              <div className="leading-tight min-w-0">
+                                <div className="font-semibold text-xs truncate">
+                                  {p.description || p.name}
+                                </div>
+                                <div className={`font-mono text-[10px] ${isChecked ? 'text-neutral-300 dark:text-neutral-600' : 'text-neutral-500'}`}>
+                                  {p.name}
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </aside>
-      </form>
 
-      <PermissionDetailModal
-        permission={selectedPermission}
-        isOpen={showPermissionModal}
-        onClose={() => setShowPermissionModal(false)}
-      />
+          {/* 5. Footer Submission Bar */}
+          <div className="px-4 py-3 bg-neutral-50/50 dark:bg-neutral-900/50 flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/roles')}
+              className="h-8 rounded-none border border-neutral-200 dark:border-neutral-800 text-xs px-3 shadow-none text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+            >
+              Batal
+            </Button>
+
+            <Button
+              type="submit"
+              size="sm"
+              disabled={loading}
+              className="h-8 rounded-none bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:bg-neutral-800 text-xs px-4 gap-1.5 shadow-none"
+            >
+              {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+              <span>Simpan Role</span>
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

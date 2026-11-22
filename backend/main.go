@@ -42,7 +42,7 @@ func main() {
 
 	// CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173", "http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -54,12 +54,14 @@ func main() {
 	{
 		api.POST("/auth/login", handlers.Login)
 		api.GET("/settings", handlers.GetSettings) // Public access to settings
+		api.GET("/public/catalog", handlers.GetPublicCatalog)
 
 		// Protected routes
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
 			protected.GET("/auth/profile", handlers.GetProfile)
+			protected.GET("/dashboard", handlers.GetDashboard)
 
 			// Settings routes
 			protected.PUT("/settings", handlers.UpdateSettings)
@@ -86,6 +88,80 @@ func main() {
 			protected.POST("/permissions", middleware.RequirePermission("permissions.create"), handlers.CreatePermission)
 			protected.PUT("/permissions/:id", middleware.RequirePermission("permissions.update"), handlers.UpdatePermission)
 			protected.DELETE("/permissions/:id", middleware.RequirePermission("permissions.delete"), handlers.DeletePermission)
+
+			// Brands routes
+			protected.GET("/brands", middleware.RequirePermission("brands.view"), handlers.GetBrands)
+			protected.GET("/brands/:id", middleware.RequirePermission("brands.view"), handlers.GetBrand)
+			protected.POST("/brands", middleware.RequirePermission("brands.create"), handlers.CreateBrand)
+			protected.PUT("/brands/:id", middleware.RequirePermission("brands.update"), handlers.UpdateBrand)
+			protected.DELETE("/brands/:id", middleware.RequirePermission("brands.delete"), handlers.DeleteBrand)
+
+			// Categories routes
+			protected.GET("/categories", middleware.RequirePermission("categories.view"), handlers.GetCategories)
+			protected.GET("/categories/:id", middleware.RequirePermission("categories.view"), handlers.GetCategory)
+			protected.POST("/categories", middleware.RequirePermission("categories.create"), handlers.CreateCategory)
+			protected.PUT("/categories/:id", middleware.RequirePermission("categories.update"), handlers.UpdateCategory)
+			protected.DELETE("/categories/:id", middleware.RequirePermission("categories.delete"), handlers.DeleteCategory)
+
+			// Products, Variants & Product Groups routes
+			protected.GET("/products", middleware.RequirePermission("products.view"), handlers.GetProducts)
+			protected.GET("/products/:id", middleware.RequirePermission("products.view"), handlers.GetProduct)
+			protected.POST("/products", middleware.RequirePermission("products.create"), handlers.CreateProduct)
+			protected.PUT("/products/:id", middleware.RequirePermission("products.update"), handlers.UpdateProduct)
+			protected.DELETE("/products/:id", middleware.RequirePermission("products.delete"), handlers.DeleteProduct)
+
+			protected.GET("/variants", middleware.RequirePermission("products.view"), handlers.GetVariants)
+			protected.GET("/variants/:id", middleware.RequirePermission("products.view"), handlers.GetVariantDetail)
+			protected.POST("/variants", middleware.RequirePermission("products.create"), handlers.CreateVariant)
+			protected.PUT("/variants/:id", middleware.RequirePermission("products.update"), handlers.UpdateVariant)
+			protected.DELETE("/variants/:id", middleware.RequirePermission("products.delete"), handlers.DeleteVariant)
+
+			protected.GET("/product-groups", middleware.RequirePermission("products.view"), handlers.GetProductGroups)
+			protected.GET("/product-groups/:id", middleware.RequirePermission("products.view"), handlers.GetProductGroup)
+			protected.POST("/product-groups", middleware.RequirePermission("products.create"), handlers.CreateProductGroup)
+			protected.PUT("/product-groups/:id", middleware.RequirePermission("products.update"), handlers.UpdateProductGroup)
+			protected.DELETE("/product-groups/:id", middleware.RequirePermission("products.delete"), handlers.DeleteProductGroup)
+
+			// Suppliers & Purchases routes
+			protected.GET("/suppliers", middleware.RequirePermission("suppliers.view"), handlers.GetSuppliers)
+			protected.GET("/suppliers/:id", middleware.RequirePermission("suppliers.view"), handlers.GetSupplier)
+			protected.POST("/suppliers", middleware.RequirePermission("suppliers.create"), handlers.CreateSupplier)
+			protected.PUT("/suppliers/:id", middleware.RequirePermission("suppliers.update"), handlers.UpdateSupplier)
+			protected.DELETE("/suppliers/:id", middleware.RequirePermission("suppliers.delete"), handlers.DeleteSupplier)
+
+			protected.GET("/purchases", middleware.RequirePermission("purchases.view"), handlers.GetPurchases)
+			protected.GET("/purchases/:id", middleware.RequirePermission("purchases.view"), handlers.GetPurchase)
+			protected.POST("/purchases", middleware.RequirePermission("purchases.create"), handlers.CreatePurchase)
+			protected.PUT("/purchases/:id", middleware.RequirePermission("purchases.update"), handlers.UpdatePurchase)
+			protected.POST("/purchases/:id/payments", middleware.RequirePermission("purchases.pay"), handlers.AddSupplierPayment)
+			protected.DELETE("/purchases/:id", middleware.RequirePermission("purchases.delete"), handlers.DeletePurchase)
+
+			// Customers routes
+			protected.GET("/customers", middleware.RequirePermission("customers.view"), handlers.GetCustomers)
+			protected.GET("/customers/:id", middleware.RequirePermission("customers.view"), handlers.GetCustomer)
+			protected.POST("/customers", middleware.RequirePermission("customers.create"), handlers.CreateCustomer)
+			protected.PUT("/customers/:id", middleware.RequirePermission("customers.update"), handlers.UpdateCustomer)
+			protected.DELETE("/customers/:id", middleware.RequirePermission("customers.delete"), handlers.DeleteCustomer)
+
+			// Sales & Customer Payments (Outbound / AR)
+			protected.GET("/sales", middleware.RequirePermission("sales.view"), handlers.GetSales)
+			protected.GET("/sales/:id", middleware.RequirePermission("sales.view"), handlers.GetSale)
+			protected.POST("/sales", middleware.RequirePermission("sales.create"), handlers.CreateSale)
+			protected.PUT("/sales/:id", middleware.RequirePermission("sales.update"), handlers.UpdateSale)
+			protected.POST("/sales/:id/payments", middleware.RequirePermission("sales.pay"), handlers.AddSalePayment)
+			protected.POST("/sales/:id/usage", middleware.RequirePermission("sales.pay"), handlers.ConfirmSaleUsage)
+			protected.POST("/sales/:id/return", middleware.RequirePermission("inventory.scan_in"), handlers.ReturnSaleConsignment)
+			protected.DELETE("/sales/:id", middleware.RequirePermission("sales.delete"), handlers.DeleteSale)
+
+			// Inventory, Batches, ED & Scan In/Out routes
+			protected.GET("/inventory/summary", middleware.RequirePermission("inventory.view"), handlers.GetInventorySummary)
+			protected.GET("/inventory/batches", middleware.RequirePermission("inventory.view"), handlers.GetBatches)
+			protected.GET("/inventory/units", middleware.RequirePermission("inventory.view"), handlers.GetStockUnits)
+			protected.GET("/inventory/units/lookup/:code", middleware.RequirePermission("inventory.view"), handlers.LookupStockUnit)
+			protected.GET("/inventory/movements", middleware.RequirePermission("inventory.view"), handlers.GetStockMovements)
+			protected.POST("/inventory/scan-in", middleware.RequirePermission("inventory.scan_in"), handlers.ScanIn)
+			protected.POST("/inventory/scan-out", middleware.RequirePermission("inventory.scan_out"), handlers.ScanOut)
+			protected.POST("/inventory/adjust", middleware.RequirePermission("inventory.manage"), handlers.AdjustStock)
 		}
 	}
 

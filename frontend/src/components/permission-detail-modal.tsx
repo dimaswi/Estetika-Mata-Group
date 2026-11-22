@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Package, Tag, Shield, CheckCircle, Info } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 interface Permission {
   id: number;
@@ -9,7 +9,7 @@ interface Permission {
   module: string;
   category: string;
   description: string;
-  actions: string; // JSON string
+  actions: string;
 }
 
 interface PermissionDetailModalProps {
@@ -28,114 +28,85 @@ export function PermissionDetailModal({ permission, isOpen, onClose }: Permissio
     actions = [];
   }
 
-  const actionLabels: Record<string, { label: string; description: string; color: string }> = {
-    create: { label: 'Create', description: 'Dapat membuat data baru', color: 'bg-green-100 text-green-800' },
-    read: { label: 'Read', description: 'Dapat melihat/membaca data', color: 'bg-blue-100 text-blue-800' },
-    update: { label: 'Update', description: 'Dapat mengubah data yang ada', color: 'bg-yellow-100 text-yellow-800' },
-    delete: { label: 'Delete', description: 'Dapat menghapus data', color: 'bg-red-100 text-red-800' },
-    export: { label: 'Export', description: 'Dapat mengekspor data', color: 'bg-purple-100 text-purple-800' },
-    import: { label: 'Import', description: 'Dapat mengimpor data', color: 'bg-indigo-100 text-indigo-800' },
-    assign_permissions: { label: 'Assign Permissions', description: 'Dapat memberikan permission ke role', color: 'bg-orange-100 text-orange-800' },
+  const actionLabels: Record<string, { label: string; description: string }> = {
+    create: { label: 'Create', description: 'Dapat membuat data baru' },
+    read: { label: 'Read', description: 'Dapat melihat/membaca data' },
+    update: { label: 'Update', description: 'Dapat mengubah data yang ada' },
+    delete: { label: 'Delete', description: 'Dapat menghapus data' },
+    export: { label: 'Export', description: 'Dapat mengekspor data' },
+    import: { label: 'Import', description: 'Dapat mengimpor data' },
+    assign_permissions: { label: 'Assign Permissions', description: 'Dapat memberikan permission ke role' },
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            Detail Permission
+      <DialogContent className="max-w-2xl rounded-none border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-none">
+        <DialogHeader className="border-b border-neutral-200 dark:border-neutral-800 pb-3">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+            <Shield className="size-4 text-neutral-800 dark:text-neutral-200" />
+            Detail Permission: <span className="font-mono text-xs">{permission.name}</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs text-neutral-500">
             Informasi lengkap tentang permission dan akses yang diberikan
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 pt-1 text-xs">
           {/* Basic Info */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-medium">Informasi Dasar</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Nama Permission</label>
-                <p className="text-sm font-mono bg-muted p-2 rounded">{permission.name}</p>
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="border border-neutral-200 dark:border-neutral-800 p-2.5 bg-neutral-50/50 dark:bg-neutral-900/40">
+                <span className="text-[11px] font-semibold text-neutral-400 uppercase">System Key</span>
+                <p className="font-mono font-semibold text-neutral-900 dark:text-neutral-100 mt-0.5">{permission.name}</p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <Package className="h-3.5 w-3.5" />
-                  Module
-                </label>
-                <p className="text-sm font-semibold">{permission.module}</p>
+              <div className="border border-neutral-200 dark:border-neutral-800 p-2.5 bg-neutral-50/50 dark:bg-neutral-900/40">
+                <span className="text-[11px] font-semibold text-neutral-400 uppercase">Modul</span>
+                <p className="font-semibold text-neutral-900 dark:text-neutral-100 mt-0.5">{permission.module}</p>
               </div>
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <Tag className="h-3.5 w-3.5" />
-                  Category
-                </label>
-                <Badge variant="outline" className="mt-1">{permission.category}</Badge>
+              <div className="border border-neutral-200 dark:border-neutral-800 p-2.5 bg-neutral-50/50 dark:bg-neutral-900/40 sm:col-span-2">
+                <span className="text-[11px] font-semibold text-neutral-400 uppercase">Kategori</span>
+                <div className="mt-1">
+                  <Badge variant="outline" className="text-[10px] rounded-none font-mono">{permission.category}</Badge>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
-            <h3 className="font-medium">Deskripsi</h3>
-            <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+          <div className="space-y-1">
+            <span className="text-[11px] font-semibold text-neutral-400 uppercase">Deskripsi</span>
+            <p className="text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 p-3 bg-neutral-50/50 dark:bg-neutral-900/40">
               {permission.description || 'Tidak ada deskripsi tersedia'}
             </p>
           </div>
 
           {/* Actions */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-medium">Aksi yang Diizinkan</h3>
-              <Badge variant="secondary">{actions.length} aksi</Badge>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-neutral-400 uppercase">Aksi yang Diizinkan</span>
+              <Badge variant="outline" className="text-[10px] font-mono rounded-none">{actions.length} aksi</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {actions.map((action) => {
                 const actionInfo = actionLabels[action] || { 
                   label: action, 
                   description: 'Aksi khusus', 
-                  color: 'bg-gray-100 text-gray-800' 
                 };
                 return (
-                  <div key={action} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50">
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${actionInfo.color}`}>
+                  <div key={action} className="flex items-center gap-2 p-2 border border-neutral-200 dark:border-neutral-800 rounded-none bg-white dark:bg-neutral-900">
+                    <Badge variant="outline" className="text-[10px] rounded-none font-mono uppercase">
                       {actionInfo.label}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">{actionInfo.description}</p>
-                    </div>
+                    </Badge>
+                    <span className="text-[11px] text-neutral-500 truncate">{actionInfo.description}</span>
                   </div>
                 );
               })}
             </div>
-            {actions.length === 0 && (
-              <p className="text-sm text-muted-foreground pl-6">Tidak ada aksi yang didefinisikan</p>
-            )}
-          </div>
-
-          {/* Security Note */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <Shield className="h-4 w-4 text-amber-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-800">Catatan Keamanan</p>
-                <p className="text-xs text-amber-700 mt-1">
-                  Permission ini akan memberikan akses sesuai dengan aksi yang telah didefinisikan. 
-                  Pastikan hanya memberikan permission kepada role yang memang membutuhkannya.
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end">
-            <Button onClick={onClose} variant="outline">
+          <div className="flex justify-end pt-3 border-t border-neutral-200 dark:border-neutral-800">
+            <Button onClick={onClose} variant="outline" size="sm" className="h-8 rounded-none text-xs">
               Tutup
             </Button>
           </div>

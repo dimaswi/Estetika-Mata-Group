@@ -11,6 +11,6 @@ type Setting struct {
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
-	Key       string         `gorm:"uniqueIndex;not null" json:"key"`
+	Key       string         `gorm:"uniqueIndex:idx_settings_key,where:deleted_at IS NULL;not null" json:"key"`
 	Value     string         `gorm:"type:text" json:"value"`
 }

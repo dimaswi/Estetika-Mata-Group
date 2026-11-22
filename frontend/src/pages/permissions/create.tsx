@@ -3,12 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { setPageTitle } from "@/lib/page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { permissionsApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Key, FileText, Package, Tag } from "lucide-react";
+import { Loader2, KeyRound, ArrowLeft, Save } from "lucide-react";
 
 export default function PermissionCreate() {
   const navigate = useNavigate();
@@ -19,18 +16,17 @@ export default function PermissionCreate() {
     module: "",
     category: "",
     description: "",
-    action: "", // Single action instead of array
+    action: "view",
   });
 
   const actionOptions = [
-    { id: 'view', label: 'View', description: 'Melihat/membaca data' },
-    { id: 'create', label: 'Create', description: 'Membuat data baru' },
-    { id: 'update', label: 'Update', description: 'Mengubah data yang ada' },
-    { id: 'delete', label: 'Delete', description: 'Menghapus data' },
-    { id: 'assign', label: 'Assign', description: 'Memberikan permission' },
+    { id: 'view', label: 'View (Melihat/Membaca Data)' },
+    { id: 'create', label: 'Create (Membuat Data Baru)' },
+    { id: 'update', label: 'Update (Mengubah Data)' },
+    { id: 'delete', label: 'Delete (Menghapus Data)' },
+    { id: 'assign', label: 'Assign (Memberikan Wewenang)' },
   ];
 
-  // Generate permission name automatically based on module and action
   const generatePermissionName = (module: string, action: string) => {
     if (!module || !action) return "";
     
@@ -47,7 +43,6 @@ export default function PermissionCreate() {
     return `${moduleKey}.${action}`;
   };
 
-  // Auto-generate permission name when module or action change
   useEffect(() => {
     if (formData.module && formData.action) {
       const generatedName = generatePermissionName(formData.module, formData.action);
@@ -56,7 +51,7 @@ export default function PermissionCreate() {
   }, [formData.module, formData.action]);
 
   useEffect(() => {
-    setPageTitle("Create Permission");
+    setPageTitle("Tambah Hak Akses");
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,23 +61,23 @@ export default function PermissionCreate() {
     try {
       const submitData = {
         ...formData,
-        actions: JSON.stringify([formData.action]) // Convert single action to array for backend
+        actions: JSON.stringify([formData.action])
       };
-      delete (submitData as any).action; // Remove action field, use actions instead
+      delete (submitData as any).action;
       
       await permissionsApi.create(submitData);
       toast({
         variant: "success",
-        title: "Success!",
-        description: "Permission created successfully.",
+        title: "Sukses!",
+        description: "Permission baru berhasil dibuat.",
       });
-      setTimeout(() => navigate("/permissions"), 500);
+      setTimeout(() => navigate("/permissions"), 400);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error!",
         description:
-          error.response?.data?.error || "Failed to create permission.",
+          error.response?.data?.error || "Gagal membuat permission.",
       });
     } finally {
       setLoading(false);
@@ -90,118 +85,152 @@ export default function PermissionCreate() {
   };
 
   return (
-    <div className="p-6">
-      <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-6">
-          <section className="space-y-5 rounded-lg border border-border/80 p-5">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
-                <Key className="h-4 w-4 text-muted-foreground" />
-                Nama Permission
-              </Label>
-              <Input
-                id="name"
-                required
-                placeholder="e.g., users.create"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="h-10"
-              />
-            </div>
+    <div className="w-full max-w-full">
+      {/* ─── Satu Kontainer Card Utuh (Single Unified Card Container persis Jurnal) ──── */}
+      <div className="w-full border border-neutral-200 dark:border-neutral-800 rounded-none bg-white dark:bg-neutral-950 overflow-hidden shadow-none">
+        
+        {/* 1. Header Bar: Icon-Only Back Button + Square Black Badge + Uppercase Title + Monospace Subtitle */}
+        <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/permissions')}
+              className="h-8 w-8 p-0 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-none text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              title="Kembali ke Daftar Permission"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="module" className="text-sm font-medium flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  Module
-                </Label>
+            <div className="flex items-center gap-2.5">
+              <div className="size-8 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 flex items-center justify-center font-bold text-sm shrink-0">
+                <KeyRound className="size-4" />
+              </div>
+              <div>
+                <h1 className="text-sm font-bold uppercase tracking-tight text-neutral-900 dark:text-white">
+                  Tambah Hak Akses (Permission)
+                </h1>
+                <p className="text-[11px] text-neutral-500 font-mono">
+                  Registrasi kode izin otorisasi fitur baru ke dalam registry sistem
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Container */}
+        <form onSubmit={handleSubmit}>
+          {/* 2. Shaded Parameter Strip */}
+          <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Nama Permission (Key) */}
+              <div className="sm:col-span-2">
+                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                  System Permission Key <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  id="name"
+                  required
+                  placeholder="Contoh: users.create, reports.view"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none font-mono"
+                  autoFocus
+                />
+                <p className="text-[10px] text-neutral-500 font-mono mt-1">Format: [module].[action]</p>
+              </div>
+
+              {/* Modul Target */}
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                  Modul Sistem <span className="text-rose-500">*</span>
+                </label>
                 <Input
                   id="module"
                   required
-                  placeholder="e.g., users"
+                  placeholder="Contoh: User Management"
                   value={formData.module}
                   onChange={e => setFormData({ ...formData, module: e.target.value })}
-                  className="h-10"
+                  className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="category" className="text-sm font-medium flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-muted-foreground" />
-                  Category
-                </Label>
+              {/* Action Wewenang */}
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                  Jenis Tindakan (Action) <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={formData.action}
+                  onChange={e => setFormData({ ...formData, action: e.target.value })}
+                  className="h-8 w-full border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 text-xs text-neutral-900 dark:text-neutral-100 rounded-none shadow-none cursor-pointer"
+                >
+                  {actionOptions.map(action => (
+                    <option key={action.id} value={action.id}>
+                      {action.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Row 2: Kategori & Deskripsi */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                  Kategori Wewenang
+                </label>
                 <Input
                   id="category"
-                  required
-                  placeholder="e.g., management"
+                  placeholder="Contoh: master_data / transactions"
                   value={formData.category}
                   onChange={e => setFormData({ ...formData, category: e.target.value })}
-                  className="h-10"
+                  className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                  Deskripsi Hak Akses
+                </label>
+                <Input
+                  id="description"
+                  placeholder="Jelaskan cakupan fitur yang dilindungi hak akses ini..."
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  className="h-8 text-xs rounded-none border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-none"
                 />
               </div>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Action</Label>
-              <Select
-                value={formData.action}
-                onValueChange={value => setFormData({ ...formData, action: value })}
+          {/* 3. Footer Submission Bar */}
+          <div className="p-4 bg-white dark:bg-neutral-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-neutral-200 dark:border-neutral-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/permissions')}
+              className="h-8 rounded-none border border-neutral-200 dark:border-neutral-800 text-xs px-3 shadow-none text-neutral-700 dark:text-neutral-300"
+            >
+              Batal
+            </Button>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={loading}
+                className="h-8 rounded-none bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:bg-neutral-800 text-xs px-3.5 gap-1.5 shadow-none"
               >
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Pilih action" />
-                </SelectTrigger>
-                <SelectContent>
-                  {actionOptions.map(action => (
-                    <SelectItem key={action.id} value={action.id}>
-                      <div className="flex flex-col text-left">
-                        <span className="font-medium">{action.label}</span>
-                        <span className="text-xs text-muted-foreground">{action.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                Deskripsi
-              </Label>
-              <Textarea
-                id="description"
-                placeholder="Deskripsi permission..."
-                value={formData.description}
-                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="min-h-[110px]"
-              />
-            </div>
-          </section>
-        </div>
-
-        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <div className="rounded-lg border border-border/80 p-4 text-sm">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Permission Preview</p>
-            <p className="font-medium">{formData.name || 'Nama permission belum diisi'}</p>
-            <p className="mt-2 text-muted-foreground">Module: {formData.module || '-'}</p>
-            <p className="text-muted-foreground">Category: {formData.category || '-'}</p>
-            <p className="text-muted-foreground">Action: {formData.action || '-'}</p>
-            <p className="mt-2 text-muted-foreground line-clamp-4">{formData.description || 'Deskripsi permission belum diisi.'}</p>
-          </div>
-
-          <div className="rounded-lg border border-border/80 p-3">
-            <div className="flex flex-col gap-2">
-              <Button type="submit" disabled={loading} className="h-10">
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Simpan Permission
-              </Button>
-              <Button type="button" variant="outline" onClick={() => navigate('/permissions')} className="h-10">
-                Batal
+                {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+                <span>Simpan Permission</span>
               </Button>
             </div>
           </div>
-        </aside>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

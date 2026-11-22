@@ -1,16 +1,24 @@
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import {
-  LayoutDashboard,
+  LayoutGrid,
   Users,
   Shield,
+  KeyRound,
+  Settings,
+  User,
   LogOut,
   ChevronDown,
-  Lock,
-  Building2,
-  Settings,
   ChevronsUpDown,
-  User,
+  FolderTree,
+  Award,
+  Package,
+  Boxes,
+  Warehouse,
+  Truck,
+  ShoppingBag,
+  Receipt,
+  Globe,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { usePermission } from '@/hooks/usePermission';
@@ -20,71 +28,198 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  useSidebar,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+  SidebarGroup,
 } from '@/components/ui/sidebar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 
-interface SubMenuItem {
-  path: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
+export interface NavChildItem {
+  title: string;
+  href: string;
+  icon?: React.ComponentType<{ className?: string }>;
   permission?: string;
 }
 
-interface MenuItem {
-  path: string;
-  label: string;
+export interface NavItem {
+  title: string;
+  href: string;
   icon: React.ComponentType<{ className?: string }>;
+  children?: NavChildItem[];
   permission?: string;
-  submenu?: SubMenuItem[];
 }
 
-const menuItems: MenuItem[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
+const mainNavItems: NavItem[] = [
   {
-    path: '/users',
-    label: 'User Management',
+    title: 'Dashboard',
+    href: '/dashboard',
+    icon: LayoutGrid,
+    permission: 'dashboard.view',
+  },
+  {
+    title: 'Website & Katalog',
+    href: '/catalog',
+    icon: Globe,
+  },
+  {
+    title: 'Pembelian & Penjualan',
+    href: '/purchases',
+    icon: ShoppingBag,
+    children: [
+      {
+        title: 'Master Supplier',
+        href: '/suppliers',
+        permission: 'suppliers.view',
+        icon: Truck,
+      },
+      {
+        title: 'Master Pelanggan',
+        href: '/customers',
+        permission: 'customers.view',
+        icon: Users,
+      },
+      {
+        title: 'Pembelian',
+        href: '/purchases',
+        permission: 'purchases.view',
+        icon: ShoppingBag,
+      },
+      {
+        title: 'Penjualan',
+        href: '/sales',
+        permission: 'sales.view',
+        icon: Receipt,
+      },
+    ],
+  },
+  {
+    title: 'Katalog & Produk',
+    href: '/products',
+    icon: Package,
+    children: [
+      {
+        title: 'Master Brand',
+        href: '/brands',
+        permission: 'brands.view',
+        icon: Award,
+      },
+      {
+        title: 'Kategori Produk',
+        href: '/categories',
+        permission: 'categories.view',
+        icon: FolderTree,
+      },
+      {
+        title: 'Master Produk',
+        href: '/products',
+        permission: 'products.view',
+        icon: Package,
+      },
+      {
+        title: 'Pengelompokan Produk',
+        href: '/product-groups',
+        permission: 'products.view',
+        icon: Boxes,
+      },
+    ],
+  },
+  {
+    title: 'Inventory & ED',
+    href: '/inventory',
+    icon: Warehouse,
+    permission: 'inventory.view',
+  },
+  {
+    title: 'User Management',
+    href: '/users',
     icon: Users,
     permission: 'users.view',
-    submenu: [
-      { path: '/users', label: 'Users', icon: Users, permission: 'users.view' },
-      { path: '/roles', label: 'Roles', icon: Shield, permission: 'roles.view' },
-      { path: '/permissions', label: 'Permissions', icon: Lock, permission: 'permissions.view' },
-    ]
+    children: [
+      {
+        title: 'Users',
+        href: '/users',
+        permission: 'users.view',
+        icon: User,
+      },
+      {
+        title: 'Roles',
+        href: '/roles',
+        permission: 'roles.view',
+        icon: Shield,
+      },
+      {
+        title: 'Permissions',
+        href: '/permissions',
+        permission: 'permissions.view',
+        icon: KeyRound,
+      },
+    ],
   },
 ];
 
-function isPathActive(currentPath: string, targetPath: string): boolean {
-  if (!targetPath) return false;
-  if (targetPath === '/') return currentPath === '/';
-  return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+const STORAGE_KEY = 'app_sidebar_open_menus';
+
+function getStoredOpenMap(): Record<string, boolean> {
+  try {
+    const val = localStorage.getItem(STORAGE_KEY);
+    if (val) {
+      return JSON.parse(val);
+    }
+  } catch {
+    // fallback
+  }
+  return {
+    'Pembelian & Penjualan': true,
+    'Katalog & Produk': true,
+    'User Management': true,
+    'Pengaturan': true,
+  };
 }
 
 export function AppSidebar() {
   const { user, logout } = useAuthStore();
-  const { state } = useSidebar();
   const { hasPermission } = usePermission();
-  const [appName, setAppName] = useState(getAppName());
-  const [appSubtitle, setAppSubtitle] = useState(getAppSubtitle());
-  const isCollapsed = state === 'collapsed';
+
+  const [appName, setAppName] = useState(getAppName() || 'DimsKits');
+  const [appSubtitle, setAppSubtitle] = useState(getAppSubtitle() || 'Dims Webs');
+  const [logoSrc, setLogoSrc] = useState<string>(() => {
+    const stored = localStorage.getItem('appLogo');
+    if (stored && !stored.includes('1.png')) {
+      if (stored.startsWith('http://') || stored.startsWith('https://') || stored.startsWith('data:')) return stored;
+      if (stored.startsWith('/uploads/')) return `http://localhost:8080${stored}`;
+      return stored;
+    }
+    return '/logo.png';
+  });
 
   useEffect(() => {
     const handleStorageChange = () => {
-      setAppName(getAppName());
-      setAppSubtitle(getAppSubtitle());
+      setAppName(getAppName() || 'DimsKits');
+      setAppSubtitle(getAppSubtitle() || 'Dims Webs');
+      const stored = localStorage.getItem('appLogo');
+      if (stored && !stored.includes('1.png')) {
+        if (stored.startsWith('http://') || stored.startsWith('https://') || stored.startsWith('data:')) {
+          setLogoSrc(stored);
+        } else if (stored.startsWith('/uploads/')) {
+          setLogoSrc(`http://localhost:8080${stored}`);
+        } else {
+          setLogoSrc(stored);
+        }
+      } else {
+        setLogoSrc('/logo.png');
+      }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -95,284 +230,257 @@ export function AppSidebar() {
     window.location.href = '/login';
   };
 
-  const visibleMenuItems = menuItems.filter(item => {
-    if (!item.permission) return true;
-    return hasPermission(item.permission);
-  }).map(item => {
-    if (item.submenu) {
-      return {
-        ...item,
-        submenu: item.submenu.filter(sub => {
-          if (!sub.permission) return true;
-          return hasPermission(sub.permission);
-        })
-      };
-    }
-    return item;
-  });
+  // Filter items by user permission
+  const items = useMemo<NavItem[]>(() => {
+    const allowed = (perm?: string) => {
+      if (!perm) return true;
+      return hasPermission(perm);
+    };
+
+    return mainNavItems.reduce<NavItem[]>((acc, item) => {
+      if (item.children && item.children.length > 0) {
+        const filtered = item.children.filter((c) => allowed(c.permission));
+        if (filtered.length > 0) acc.push({ ...item, children: filtered });
+      } else if (allowed(item.permission)) {
+        acc.push(item);
+      }
+      return acc;
+    }, []);
+  }, [hasPermission]);
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0" variant="inset">
-      {/* Header - Logo & App Name */}
-      <SidebarHeader className="px-4 py-4 pb-2">
-        <a href="/" className={cn(
-          "flex items-center gap-3 transition-all",
-          isCollapsed && "justify-center"
-        )}>
-          <div className="flex items-center justify-center size-8 rounded-lg bg-foreground text-background shrink-0">
-            <Building2 className="size-4" />
+    <Sidebar collapsible="icon">
+      {/* ─── 1. Header Logo (Persis Go-Akuntansi: logo bundar + title + subtitle) ─── */}
+      <SidebarHeader className="px-4 py-3 group-data-[collapsible=icon]:p-2">
+        <Link to="/" className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+          <img
+            src={logoSrc}
+            alt="Logo"
+            className="size-9 object-contain rounded-full shrink-0 group-data-[collapsible=icon]:size-8"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = '/logo.png';
+            }}
+          />
+          <div className="flex flex-col text-left group-data-[collapsible=icon]:hidden min-w-0">
+            <span className="font-bold text-sm tracking-tight text-neutral-900 dark:text-white leading-tight truncate">
+              {appName}
+            </span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-normal leading-tight mt-0.5 truncate">
+              {appSubtitle}
+            </span>
           </div>
-          {!isCollapsed && (
-            <div className="flex flex-col leading-tight">
-              <span className="font-bold text-sm">{appName}</span>
-              <span className="text-xs text-muted-foreground truncate">{appSubtitle}</span>
-            </div>
-          )}
-        </a>
+        </Link>
       </SidebarHeader>
 
-      {/* Menu Content */}
-      <SidebarContent className="px-3 pt-2">
-        {!isCollapsed && (
-          <p className="px-3 mb-2 text-[11px] font-semibold text-sidebar-foreground/40 uppercase tracking-widest">
-            Menu
-          </p>
-        )}
-
-        <nav className="flex flex-col gap-0.5">
-          {isCollapsed ? (
-            // Collapsed: icon-only mode
-            <div className="flex flex-col items-center gap-1">
-              {visibleMenuItems.map((item) => (
-                <CollapsedMenuItem key={item.path} item={item} />
-              ))}
-            </div>
-          ) : (
-            // Expanded: full menu
-            visibleMenuItems.map((item) => (
-              <ExpandedMenuItem key={item.path} item={item} />
-            ))
-          )}
-        </nav>
+      {/* ─── 2. Navigasi Menu (Persis Go-Akuntansi: NavMain) ─── */}
+      <SidebarContent>
+        <NavMain items={items} />
       </SidebarContent>
 
-      {/* Footer - User Profile */}
-      <SidebarFooter className="p-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className={cn(
-              "flex items-center gap-2.5 w-full rounded-lg p-2 text-left transition-colors hover:bg-sidebar-accent",
-              isCollapsed && "justify-center p-1.5"
-            )}>
-              <div className="flex items-center justify-center size-8 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-sm font-semibold shrink-0">
-                {user?.full_name?.charAt(0) || 'U'}
-              </div>
-              {!isCollapsed && (
-                <>
-                  <div className="flex flex-col leading-tight min-w-0 flex-1">
-                    <span className="text-sm font-medium truncate">{user?.full_name}</span>
-                    <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+      {/* ─── 3. Footer User Profile (Persis Go-Akuntansi) ─── */}
+      <SidebarFooter className="border-t p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 flex items-center justify-center font-semibold text-xs shrink-0">
+                    {user?.full_name?.slice(0, 2).toUpperCase() || 'AD'}
                   </div>
-                  <ChevronsUpDown className="size-4 text-muted-foreground shrink-0" />
-                </>
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side={isCollapsed ? "right" : "top"}
-            align={isCollapsed ? "start" : "center"}
-            className="w-56"
-          >
-            <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">{user?.full_name}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/account">
-                <User className="mr-2 size-4" />
-                Account
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings">
-                <Settings className="mr-2 size-4" />
-                Settings
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-              <LogOut className="mr-2 size-4" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  <div className="grid flex-1 text-left text-sm leading-tight min-w-0 group-data-[collapsible=icon]:hidden">
+                    <span className="truncate font-semibold text-neutral-900 dark:text-neutral-100">
+                      {user?.full_name || 'Administrator'}
+                    </span>
+                    <span className="truncate text-xs text-neutral-500 font-normal mt-0.5">
+                      {user?.role?.name || user?.username || 'Administrator'}
+                    </span>
+                  </div>
+                  <ChevronsUpDown className="ml-auto size-4 text-neutral-400 shrink-0 group-data-[collapsible=icon]:hidden" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 flex items-center justify-center font-semibold text-xs shrink-0">
+                      {user?.full_name?.slice(0, 2).toUpperCase() || 'AD'}
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
+                      <span className="truncate font-semibold">{user?.full_name || 'Administrator'}</span>
+                      <span className="truncate text-xs text-muted-foreground">{user?.email || 'admin@kawandolan.com'}</span>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/account" className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profil Akun</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/settings" className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Pengaturan</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Keluar</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );
 }
 
-/** Collapsed icon-only menu item */
-function CollapsedMenuItem({ item }: { item: MenuItem }) {
+/** NavMain persis seperti di Go-Akuntansi: src/components/nav-main.tsx */
+function NavMain({ items = [] }: { items: NavItem[] }) {
   const location = useLocation();
-  const Icon = item.icon;
-  const hasSubmenu = item.submenu && item.submenu.length > 0;
-  const isActive = isPathActive(location.pathname, item.path) ||
-    (hasSubmenu && item.submenu!.some(sub => isPathActive(location.pathname, sub.path)));
+  const currentPath = location.pathname;
 
-  if (hasSubmenu) {
-    return (
-      <DropdownMenu>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <button className={cn(
-                  "flex items-center justify-center size-8 rounded-lg transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}>
-                  <Icon className="size-4" />
-                </button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="right">{item.label}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <DropdownMenuContent side="right" align="start" className="min-w-44">
-          {item.submenu!.map((sub) => {
-            const SubIcon = sub.icon;
-            const isSubActive = isPathActive(location.pathname, sub.path);
-            return (
-              <DropdownMenuItem key={sub.path} asChild>
-                <Link to={sub.path} className={cn(isSubActive && "bg-accent")}>
-                  <SubIcon className="mr-2 size-4" />
-                  {sub.label}
-                </Link>
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
-            to={item.path}
-            className={cn(
-              "flex items-center justify-center size-8 rounded-lg transition-colors",
-              isActive
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            )}
-          >
-            <Icon className="size-4" />
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">{item.label}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-/** Expanded full menu item with dot-bullet submenu */
-function ExpandedMenuItem({ item }: { item: MenuItem }) {
-  const location = useLocation();
-  const Icon = item.icon;
-  const hasSubmenu = item.submenu && item.submenu.length > 0;
-  const isActive = isPathActive(location.pathname, item.path) ||
-    (hasSubmenu && item.submenu!.some(sub => isPathActive(location.pathname, sub.path)));
-  const [expanded, setExpanded] = useState(isActive);
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>(() => {
+    const initial = getStoredOpenMap();
+    items.forEach((item) => {
+      if (item.children?.some((c) => currentPath === c.href || currentPath.startsWith(c.href + '/'))) {
+        initial[item.title] = true;
+      }
+    });
+    return initial;
+  });
 
   useEffect(() => {
-    if (isActive && hasSubmenu) setExpanded(true);
-  }, [isActive, hasSubmenu]);
+    items.forEach((item) => {
+      if (item.children?.some((c) => currentPath === c.href || currentPath.startsWith(c.href + '/'))) {
+        setOpenMap((prev) => {
+          if (prev[item.title]) return prev;
+          const next = { ...prev, [item.title]: true };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          } catch {
+            // ignore
+          }
+          return next;
+        });
+      }
+    });
+  }, [currentPath, items]);
 
-  // Parent with submenu
-  if (hasSubmenu) {
-    return (
-      <div className="relative">
-        {/* Vertical tree line: starts from center of parent icon, runs down through all children */}
-        {expanded && (
-          <div className="absolute left-[21px] top-[32px] bottom-[16px] w-px bg-sidebar-foreground/25" />
-        )}
+  const toggleOpen = (title: string) => {
+    setOpenMap((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className={cn(
-            "flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors",
-            isActive
-              ? "text-sidebar-accent-foreground font-medium"
-              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-          )}
-        >
-          <Icon className="size-[18px] shrink-0" />
-          <span className="flex-1 text-left truncate">{item.label}</span>
-          <ChevronDown className={cn(
-            "size-4 text-sidebar-foreground/40 transition-transform duration-200",
-            !expanded && "-rotate-90"
-          )} />
-        </button>
+  const normalizedPath = currentPath.replace(/\/$/, '') || '/';
 
-        {/* Submenu with tree branches + dot bullets */}
-        {expanded && (
-          <div className="relative">
-            {item.submenu!.map((sub) => {
-              const isSubActive = isPathActive(location.pathname, sub.path);
+  const isRouteMatch = (href: string) => {
+    const target = href.replace(/\/$/, '') || '/';
+    return normalizedPath === target || normalizedPath.startsWith(target + '/');
+  };
 
-              return (
-                <div key={sub.path} className="relative flex items-center h-[34px]">
-                  {/* Horizontal branch from vertical trunk to dot */}
-                  <div className="absolute left-[21px] top-[50%] w-[16px] h-px bg-sidebar-foreground/25" />
+  const isParentActive = (item: NavItem) => {
+    if (!item.children) {
+      return isRouteMatch(item.href);
+    }
+    return item.children.some((c) => isRouteMatch(c.href));
+  };
 
-                  {/* Dot bullet on the branch */}
-                  <div className="absolute left-[37px] top-[50%] -translate-y-[50%]">
-                    <span className={cn(
-                      "block size-[5px] rounded-full",
-                      isSubActive
-                        ? "bg-sidebar-foreground"
-                        : "bg-sidebar-foreground/35"
-                    )} />
-                  </div>
-
-                  <Link
-                    to={sub.path}
-                    className={cn(
-                      "flex items-center w-full ml-[48px] mr-2 px-3 py-1.5 text-sm rounded-lg transition-colors",
-                      isSubActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                    )}
-                  >
-                    <span className="truncate">{sub.label}</span>
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Simple menu item (no submenu)
   return (
-    <Link
-      to={item.path}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors",
-        isActive
-          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-      )}
-    >
-      <Icon className="size-[18px] shrink-0" />
-      <span className="truncate">{item.label}</span>
-    </Link>
+    <SidebarGroup>
+      <SidebarMenu>
+        {items.map((item) => {
+          const Icon = item.icon;
+          const hasChildren = item.children && item.children.length > 0;
+          const isOpen = !!openMap[item.title];
+          const active = isParentActive(item);
+
+          if (!hasChildren) {
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={active}
+                  tooltip={item.title}
+                  className="rounded-none data-[active=true]:bg-neutral-900 data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-neutral-900 data-[active=true]:font-semibold"
+                >
+                  <Link to={item.href}>
+                    <Icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          }
+
+          return (
+            <Collapsible
+              key={item.title}
+              asChild
+              open={isOpen}
+              onOpenChange={() => toggleOpen(item.title)}
+            >
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={active}
+                    className="rounded-none data-[active=true]:bg-neutral-100 data-[active=true]:text-neutral-900 dark:data-[active=true]:bg-neutral-800/70 dark:data-[active=true]:text-white data-[active=true]:font-semibold"
+                  >
+                    <Icon />
+                    <span>{item.title}</span>
+                    <ChevronDown
+                      className={`ml-auto size-4 transition-transform duration-200 group-data-[collapsible=icon]:hidden ${isOpen ? 'rotate-180' : ''
+                        }`}
+                    />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {item.children?.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isChildActive = isRouteMatch(child.href);
+                      return (
+                        <SidebarMenuSubItem key={child.title}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={isChildActive}
+                            className="rounded-none data-[active=true]:bg-neutral-900 data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-neutral-900 data-[active=true]:font-semibold"
+                          >
+                            <Link to={child.href}>
+                              {ChildIcon && <ChildIcon className="size-4 shrink-0" />}
+                              <span>{child.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      );
+                    })}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          );
+        })}
+      </SidebarMenu>
+    </SidebarGroup>
   );
 }
+
+export default AppSidebar;

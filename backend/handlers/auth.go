@@ -10,7 +10,8 @@ import (
 )
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -52,8 +53,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	identifier := req.Username
+	if identifier == "" {
+		identifier = req.Email
+	}
+	if identifier == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
+		return
+	}
+
 	var user models.User
-	if err := database.DB.Preload("Role.Permissions").Where("email = ?", req.Email).First(&user).Error; err != nil {
+	if err := database.DB.Preload("Role.Permissions").Where("username = ? OR email = ?", identifier, identifier).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}

@@ -1,58 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import {
-  Clock3,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { Breadcrumbs, type BreadcrumbItemType } from '@/components/breadcrumbs';
+import { Button } from '@/components/ui/button';
+import { Moon, Sun, Search } from 'lucide-react';
 
-const MODULE_META: Record<string, { title: string; subtitle: string }> = {
-  dashboard: {
-    title: 'Dashboard',
-    subtitle: 'Pantau ringkasan sistem dan aktivitas harian',
-  },
-  users: {
-    title: 'Users',
-    subtitle: 'Kelola akun dan akses pengguna aplikasi',
-  },
-  roles: {
-    title: 'Roles',
-    subtitle: 'Atur struktur hak akses berbasis peran',
-  },
-  permissions: {
-    title: 'Permissions',
-    subtitle: 'Kelola izin granular setiap fitur sistem',
-  },
-  account: {
-    title: 'Account',
-    subtitle: 'Lihat dan ubah informasi profil Anda',
-  },
-  settings: {
-    title: 'Settings',
-    subtitle: 'Konfigurasi preferensi aplikasi',
-  },
-};
-
-function getThemeFromDom(): 'light' | 'dark' {
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+interface AppHeaderProps {
+  breadcrumbs?: BreadcrumbItemType[];
 }
 
-function prettifySegment(segment: string): string {
-  if (!segment) return '';
-  if (/^\d+$/.test(segment)) return `#${segment}`;
-  return segment
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
-}
-
-function AppHeader() {
+export function AppHeader({ breadcrumbs: propBreadcrumbs }: AppHeaderProps) {
   const location = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [clockLabel, setClockLabel] = useState('');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
@@ -61,26 +21,8 @@ function AppHeader() {
       document.documentElement.classList.toggle('dark', savedTheme === 'dark');
       return;
     }
-
-    const domTheme = getThemeFromDom();
-    setTheme(domTheme);
-    localStorage.setItem('theme', domTheme);
-  }, []);
-
-  useEffect(() => {
-    const updateClock = () => {
-      setClockLabel(
-        new Date().toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      );
-    };
-
-    updateClock();
-    const timer = window.setInterval(updateClock, 1000);
-    return () => window.clearInterval(timer);
+    const isDark = document.documentElement.classList.contains('dark');
+    setTheme(isDark ? 'dark' : 'light');
   }, []);
 
   const toggleTheme = () => {
@@ -90,56 +32,148 @@ function AppHeader() {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
-  const pathSegments = location.pathname.split('/').filter(Boolean);
-  const moduleKey = pathSegments[0] || 'dashboard';
+  const computedBreadcrumbs = useMemo<BreadcrumbItemType[]>(() => {
+    if (propBreadcrumbs && propBreadcrumbs.length > 0) {
+      return propBreadcrumbs;
+    }
 
-  const pageMeta = MODULE_META[moduleKey] || {
-    title: prettifySegment(moduleKey) || 'Overview',
-    subtitle: 'Halaman aplikasi',
-  };
+    const path = location.pathname.replace(/\/$/, '');
+    if (!path || path === '/' || path === '/dashboard') {
+      return [{ title: 'Dashboard' }];
+    }
 
-  const pageStateLabel = useMemo(() => {
-    if (pathSegments.some(segment => segment === 'edit')) return 'Edit';
-    if (pathSegments.some(segment => segment === 'create' || segment === 'new')) return 'Create';
-    if (pathSegments.some(segment => segment === 'show')) return 'Detail';
-    return 'Overview';
-  }, [pathSegments]);
+    const segments = path.split('/').filter(Boolean);
+    const crumbs: BreadcrumbItemType[] = [];
 
-  const currentPath = location.pathname || '/';
+    if (segments[0] === 'users') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Users', href: segments.length > 1 ? '/users' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah User' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit User' });
+      else if (segments[1]) crumbs.push({ title: 'Detail User' });
+    } else if (segments[0] === 'roles') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Roles', href: segments.length > 1 ? '/roles' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah Role' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Role' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Role' });
+    } else if (segments[0] === 'permissions') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Permissions', href: segments.length > 1 ? '/permissions' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah Permission' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Permission' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Permission' });
+    } else if (segments[0] === 'account') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Profil Akun' });
+    } else if (segments[0] === 'settings') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Preferensi Sistem' });
+    } else if (segments[0] === 'brands') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Master Brand', href: segments.length > 1 ? '/brands' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah Brand' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Brand' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Brand' });
+    } else if (segments[0] === 'categories') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Kategori Produk', href: segments.length > 1 ? '/categories' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah Kategori' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Kategori' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Kategori' });
+    } else if (segments[0] === 'products') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Master Produk', href: segments.length > 1 ? '/products' : undefined });
+      if (segments[1] === 'create') {
+        crumbs.push({ title: 'Tambah Produk' });
+      } else if (segments[2] === 'edit') {
+        crumbs.push({ title: 'Edit Produk' });
+      } else if (segments[2] === 'variants') {
+        crumbs.push({ title: 'Detail Produk', href: `/products/${segments[1]}` });
+        if (segments[3] === 'create') crumbs.push({ title: 'Tambah Variasi' });
+        else if (segments[4] === 'edit') crumbs.push({ title: 'Edit Variasi' });
+        else if (segments[3]) crumbs.push({ title: 'Detail Variasi' });
+      } else if (segments[1]) {
+        crumbs.push({ title: 'Detail Produk' });
+      }
+    } else if (segments[0] === 'product-groups') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Pengelompokan Produk', href: segments.length > 1 ? '/product-groups' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah Kelompok' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Kelompok' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Kelompok' });
+    } else if (segments[0] === 'suppliers') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Supplier', href: segments.length > 1 ? '/suppliers' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah Supplier' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Supplier' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Supplier' });
+    } else if (segments[0] === 'customers') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Pelanggan', href: segments.length > 1 ? '/customers' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Tambah Pelanggan' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Pelanggan' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Pelanggan' });
+    } else if (segments[0] === 'purchases') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Pembelian', href: segments.length > 1 ? '/purchases' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Buat Pembelian' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Pembelian' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Pembelian' });
+    } else if (segments[0] === 'sales') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Penjualan', href: segments.length > 1 ? '/sales' : undefined });
+      if (segments[1] === 'create') crumbs.push({ title: 'Buat Penjualan' });
+      else if (segments[2] === 'edit') crumbs.push({ title: 'Edit Penjualan' });
+      else if (segments[1]) crumbs.push({ title: 'Detail Penjualan' });
+    } else if (segments[0] === 'inventory') {
+      crumbs.push({ title: 'Dashboard', href: '/dashboard' });
+      crumbs.push({ title: 'Inventory & ED' });
+    } else {
+      crumbs.push({
+        title: segments[0].charAt(0).toUpperCase() + segments[0].slice(1),
+      });
+    }
+
+    return crumbs;
+  }, [location.pathname, propBreadcrumbs]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="flex min-h-14 items-center justify-between gap-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <SidebarTrigger className="size-8" />
-          <Separator orientation="vertical" className="h-8" />
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border/60 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4 bg-background sticky top-0 z-40 select-none">
+      <div className="flex items-center gap-2 min-w-0">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Breadcrumbs breadcrumbs={computedBreadcrumbs} />
+      </div>
 
-          <div className="min-w-0">
-            <div className="mb-0.5 flex items-center gap-2">
-              <p className="truncate text-sm font-semibold text-foreground">{pageMeta.title}</p>
-              <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] uppercase tracking-wider">
-                {pageStateLabel}
-              </Badge>
-            </div>
-            <p className="truncate text-xs text-muted-foreground">{pageMeta.subtitle} · {currentPath}</p>
-          </div>
+      <div className="flex items-center gap-3">
+        {/* Search input pill as seen in Go-Akuntansi */}
+        <div className="relative hidden md:flex items-center">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-neutral-400" />
+          <input
+            type="text"
+            placeholder="Cari.."
+            className="pl-8 pr-7 h-8 w-56 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900 text-xs text-neutral-700 dark:text-neutral-300 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white dark:focus:bg-neutral-950 transition-colors"
+          />
+          <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-neutral-400 font-mono px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+            /
+          </kbd>
         </div>
 
-        <div className="hidden items-center gap-3 lg:flex">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock3 className="size-3.5" />
-            <span>{clockLabel}</span>
-          </div>
-
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="size-8">
-            {theme === 'light' ? <Moon className="size-4" /> : <Sun className="size-4" />}
-            <span className="sr-only">Toggle theme</span>
-          </Button>
-        </div>
+        {/* Theme toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="size-8 rounded-md text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+          title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
+        >
+          {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          <span className="sr-only">Toggle theme</span>
+        </Button>
       </div>
     </header>
   );
 }
 
-export { AppHeader };
 export default AppHeader;
