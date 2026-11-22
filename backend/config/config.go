@@ -5,16 +5,20 @@ import (
 )
 
 type Config struct {
-	DatabaseDSN string
-	JWTSecret   string
-	ServerPort  string
+	DatabaseDSN    string
+	JWTSecret      string
+	ServerPort     string
+	AllowedOrigins string
+	FrontendDist   string
 }
 
 func Load() *Config {
 	return &Config{
-		DatabaseDSN: getEnv("DATABASE_DSN", "host=localhost user=starter password=starter123 dbname=starter port=5434 sslmode=disable"),
-		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-		ServerPort:  getEnv("SERVER_PORT", "8080"),
+		DatabaseDSN:    getEnv("DATABASE_DSN", "host=localhost user=starter password=starter123 dbname=starter port=5434 sslmode=disable"),
+		JWTSecret:      getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		ServerPort:     getEnv("SERVER_PORT", "8080"),
+		AllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", ""),
+		FrontendDist:   getEnv("FRONTEND_DIST", "../frontend/dist"),
 	}
 }
 

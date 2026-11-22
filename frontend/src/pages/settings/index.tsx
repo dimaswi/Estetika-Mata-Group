@@ -3,11 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Loader2, Upload, FileImage, SlidersHorizontal, RefreshCw } from "lucide-react";
-import { settingsApi } from "@/lib/api";
+import { settingsApi, API_URL } from "@/lib/api";
 
 const getBaseUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-  return apiUrl.replace(/\/api$/, '');
+  return API_URL.replace(/\/api\/?$/, '');
 };
 const BASE_URL = getBaseUrl();
 

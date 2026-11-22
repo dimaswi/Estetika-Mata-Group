@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { usePermission } from '@/hooks/usePermission';
-import { getAppName, getAppSubtitle } from '@/lib/page-title';
+import { getAppName, getAppSubtitle, resolveBackendAssetUrl } from '@/lib/page-title';
 import {
   Sidebar,
   SidebarContent,
@@ -194,32 +194,15 @@ export function AppSidebar() {
 
   const [appName, setAppName] = useState(getAppName() || 'DimsKits');
   const [appSubtitle, setAppSubtitle] = useState(getAppSubtitle() || 'Dims Webs');
-  const [logoSrc, setLogoSrc] = useState<string>(() => {
-    const stored = localStorage.getItem('appLogo');
-    if (stored && !stored.includes('1.png')) {
-      if (stored.startsWith('http://') || stored.startsWith('https://') || stored.startsWith('data:')) return stored;
-      if (stored.startsWith('/uploads/')) return `http://localhost:8080${stored}`;
-      return stored;
-    }
-    return '/logo.png';
-  });
+  const [logoSrc, setLogoSrc] = useState<string>(() =>
+    resolveBackendAssetUrl(localStorage.getItem('appLogo'), '/logo.png')
+  );
 
   useEffect(() => {
     const handleStorageChange = () => {
       setAppName(getAppName() || 'DimsKits');
       setAppSubtitle(getAppSubtitle() || 'Dims Webs');
-      const stored = localStorage.getItem('appLogo');
-      if (stored && !stored.includes('1.png')) {
-        if (stored.startsWith('http://') || stored.startsWith('https://') || stored.startsWith('data:')) {
-          setLogoSrc(stored);
-        } else if (stored.startsWith('/uploads/')) {
-          setLogoSrc(`http://localhost:8080${stored}`);
-        } else {
-          setLogoSrc(stored);
-        }
-      } else {
-        setLogoSrc('/logo.png');
-      }
+      setLogoSrc(resolveBackendAssetUrl(localStorage.getItem('appLogo'), '/logo.png'));
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);

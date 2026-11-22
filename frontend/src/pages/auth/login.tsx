@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getAppName, getAppSubtitle, updateFavicon } from '@/lib/page-title';
+import { getAppName, getAppSubtitle, resolveBackendAssetUrl, updateFavicon } from '@/lib/page-title';
 
 const GRID_SIZE = 40;
 const INFLUENCE_RADIUS = 220;
@@ -224,12 +224,7 @@ export const LoginPage: React.FC = () => {
   const [appSubtitle, setAppSubtitle] = useState(getAppSubtitle() || 'Dims Webs');
   const [logoUrl, setLogoUrl] = useState<string>(() => {
     const rawLogo = localStorage.getItem('appLogo');
-    if (rawLogo && !rawLogo.includes('1.png')) {
-      if (rawLogo.startsWith('http://') || rawLogo.startsWith('https://') || rawLogo.startsWith('data:')) return rawLogo;
-      if (rawLogo.startsWith('/uploads/')) return `http://localhost:8080${rawLogo}`;
-      return rawLogo;
-    }
-    return '';
+    return rawLogo && !rawLogo.includes('1.png') ? resolveBackendAssetUrl(rawLogo, '') : '';
   });
 
   useEffect(() => {
@@ -259,15 +254,7 @@ export const LoginPage: React.FC = () => {
         }
         const rawLogo = settings.app_logo || settings.logo_path || localStorage.getItem('appLogo');
         if (rawLogo && !rawLogo.includes('1.png')) {
-          if (rawLogo.startsWith('http://') || rawLogo.startsWith('https://') || rawLogo.startsWith('data:')) {
-            setLogoUrl(rawLogo);
-          } else if (rawLogo.startsWith('/uploads/')) {
-            setLogoUrl(`http://localhost:8080${rawLogo}`);
-          } else if (rawLogo.startsWith('/')) {
-            setLogoUrl(rawLogo);
-          } else {
-            setLogoUrl(`http://localhost:8080/${rawLogo}`);
-          }
+          setLogoUrl(resolveBackendAssetUrl(rawLogo, ''));
           localStorage.setItem('appLogo', rawLogo);
         }
         const rawFavicon = settings.app_favicon || rawLogo;

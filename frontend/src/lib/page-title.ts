@@ -1,39 +1,51 @@
-/**
- * Utility function to set page title dynamically
- * @param pageTitle - The title of the current page
- */
+const getBackendOrigin = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL as string | undefined;
+  if (envUrl) {
+    return envUrl.replace(/\/api\/?$/, '');
+  }
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    return '';
+  }
+  return 'http://localhost:8080';
+};
+
+export const resolveBackendAssetUrl = (rawUrl?: string | null, fallback = '/logo.png'): string => {
+  if (!rawUrl || rawUrl.includes('1.png') || rawUrl.includes('/vite.svg')) {
+    return fallback;
+  }
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('data:')) {
+    return rawUrl;
+  }
+  const origin = getBackendOrigin();
+  if (rawUrl.startsWith('/uploads/')) {
+    return `${origin}${rawUrl}`;
+  }
+  if (rawUrl.startsWith('/')) {
+    return rawUrl;
+  }
+  return `${origin}/${rawUrl}`;
+};
+
 export const setPageTitle = (pageTitle: string) => {
-  const appName = localStorage.getItem('appName') || 'DimsKits';
+  const appName = localStorage.getItem('appName') || 'PT Estetika Mata Group';
   document.title = `${pageTitle} - ${appName}`;
 };
 
-/**
- * Get application name from localStorage
- */
 export const getAppName = () => {
-  return localStorage.getItem('appName') || 'DimsKits';
+  return localStorage.getItem('appName') || 'PT Estetika Mata Group';
 };
 
-/**
- * Get application subtitle from localStorage
- */
 export const getAppSubtitle = () => {
-  return localStorage.getItem('appSubtitle') || 'Dims Webs';
+  return localStorage.getItem('appSubtitle') || 'Estetika Mata Group';
 };
 
-/**
- * Dynamically update the browser tab favicon
- */
 export const updateFavicon = (faviconUrl?: string) => {
-  let url = faviconUrl || localStorage.getItem('appFavicon') || localStorage.getItem('appLogo') || '/logo.png';
-  if (!url || url.includes('/vite.svg')) {
-    url = '/logo.png';
-  }
-  if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:') && !url.startsWith('/')) {
-    url = `http://localhost:8080/${url}`;
-  } else if (url.startsWith('/uploads/')) {
-    url = `http://localhost:8080${url}`;
-  }
+  const raw = faviconUrl || localStorage.getItem('appFavicon') || localStorage.getItem('appLogo');
+  const url = resolveBackendAssetUrl(raw, '/logo.png');
 
   let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
   if (!link) {

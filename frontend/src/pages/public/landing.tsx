@@ -9,7 +9,7 @@ import {
 } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { formatIDR } from '@/lib/format';
-import { getAppName, getAppSubtitle, setPageTitle } from '@/lib/page-title';
+import { getAppName, getAppSubtitle, resolveBackendAssetUrl, setPageTitle } from '@/lib/page-title';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -37,19 +37,7 @@ import {
 const WHATSAPP_NUMBER = '6281234567890';
 
 function resolveLogoUrl(rawLogo?: string | null): string {
-  if (rawLogo && !rawLogo.includes('1.png')) {
-    if (rawLogo.startsWith('http://') || rawLogo.startsWith('https://') || rawLogo.startsWith('data:')) {
-      return rawLogo;
-    }
-    if (rawLogo.startsWith('/uploads/')) {
-      return `http://localhost:8080${rawLogo}`;
-    }
-    if (rawLogo.startsWith('/')) {
-      return rawLogo;
-    }
-    return `http://localhost:8080/${rawLogo}`;
-  }
-  return '/logo.png';
+  return resolveBackendAssetUrl(rawLogo, '/logo.png');
 }
 
 function buildWhatsAppUrl(product?: PublicProductItem, variant?: PublicVariantItem) {

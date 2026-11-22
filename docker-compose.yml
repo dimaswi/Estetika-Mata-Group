@@ -1,63 +1,41 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: pos-postgres
+  db:
+    image: postgres:16-alpine
+    container_name: emg-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: dimas
-      POSTGRES_PASSWORD: dimas123
-      POSTGRES_DB: pos
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "5434:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-starterkit}
+      TZ: Asia/Jakarta
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - emg_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dimas -d pos"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-starterkit}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - pos-network
+      retries: 10
 
-  # Backend API (Go)
-  backend:
+  app:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    container_name: pos-backend
-    environment:
-      DATABASE_DSN: "host=postgres user=dimas password=dimas123 dbname=pos port=5434 sslmode=disable"
-      JWT_SECRET: "your-secret-key-change-in-production"
-      SERVER_PORT: "8080"
-    ports:
-      - "8080:8080"
+    container_name: emg-app
+    restart: unless-stopped
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
-    networks:
-      - pos-network
-    restart: unless-stopped
-
-  # Frontend (React)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: pos-frontend
     ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    networks:
-      - pos-network
-    restart: unless-stopped
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      GIN_MODE: release
+      SERVER_PORT: 8080
+      FRONTEND_DIST: /app/dist
+      DATABASE_DSN: "host=db user=${POSTGRES_USER:-postgres} password=${POSTGRES_PASSWORD:-postgres} dbname=${POSTGRES_DB:-starterkit} port=5432 sslmode=disable TimeZone=Asia/Jakarta"
+      JWT_SECRET: ${JWT_SECRET:-estetika-mata-group-production-secret-key-change-me}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
+    volumes:
+      - ./backend/uploads:/app/uploads
 
 volumes:
-  postgres_data:
-
-networks:
-  pos-network:
-    driver: bridge
+  emg_pgdata:

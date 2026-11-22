@@ -2,10 +2,13 @@ package main
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 	"starter/backend/config"
 	"starter/backend/database"
 	"starter/backend/handlers"
 	"starter/backend/middleware"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -41,8 +44,22 @@ func main() {
 	r.Static("/uploads", "./uploads")
 
 	// CORS middleware
+	allowedOrigins := []string{
+		"http://localhost:5173",
+		"http://127.0.0.1:5173",
+		"http://localhost:4173",
+		"http://127.0.0.1:4173",
+		"http://localhost:3000",
+	}
+	if cfg.AllowedOrigins != "" {
+		for _, origin := range strings.Split(cfg.AllowedOrigins, ",") {
+			if trimmed := strings.TrimSpace(origin); trimmed != "" {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
+		}
+	}
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173", "http://localhost:3000"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -169,6 +186,33 @@ func main() {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	// Serve built frontend SPA (dist) automatically in production if available
+	distDir := cfg.FrontendDist
+	if _, err := os.Stat(filepath.Join(distDir, "index.html")); err != nil {
+		if _, err2 := os.Stat(filepath.Join("./dist", "index.html")); err2 == nil {
+			distDir = "./dist"
+		} else {
+			distDir = ""
+		}
+	}
+	if distDir != "" {
+		log.Printf("Serving frontend static build from %s", distDir)
+		r.Static("/assets", filepath.Join(distDir, "assets"))
+		r.StaticFile("/logo.png", filepath.Join(distDir, "logo.png"))
+		r.NoRoute(func(c *gin.Context) {
+			if strings.HasPrefix(c.Request.URL.Path, "/api") || strings.HasPrefix(c.Request.URL.Path, "/uploads") {
+				c.JSON(404, gin.H{"error": "Not found"})
+				return
+			}
+			reqPath := filepath.Join(distDir, filepath.Clean(c.Request.URL.Path))
+			if info, err := os.Stat(reqPath); err == nil && !info.IsDir() {
+				c.File(reqPath)
+				return
+			}
+			c.File(filepath.Join(distDir, "index.html"))
+		})
+	}
 
 	log.Printf("Server starting on port %s...", cfg.ServerPort)
 	if err := r.Run(":" + cfg.ServerPort); err != nil {
