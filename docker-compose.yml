@@ -1,41 +1,67 @@
+name: emg-system
+
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: emg-postgres
+  emg-database:
+    image: postgres:15-alpine
+    container_name: emg-database
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-starterkit}
+      POSTGRES_DB: ${POSTGRES_DB:-estetika_mata_db}
       TZ: Asia/Jakarta
     volumes:
       - emg_pgdata:/var/lib/postgresql/data
+    networks:
+      - emg-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-starterkit}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-estetika_mata_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  app:
+  emg-app:
     build:
       context: .
       dockerfile: Dockerfile
+    image: emg-system-app:latest
     container_name: emg-app
     restart: unless-stopped
     depends_on:
-      db:
+      emg-database:
         condition: service_healthy
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-3002}:8080"
     environment:
       GIN_MODE: release
       SERVER_PORT: 8080
       FRONTEND_DIST: /app/dist
-      DATABASE_DSN: "host=db user=${POSTGRES_USER:-postgres} password=${POSTGRES_PASSWORD:-postgres} dbname=${POSTGRES_DB:-starterkit} port=5432 sslmode=disable TimeZone=Asia/Jakarta"
+      DATABASE_DSN: "host=emg-database user=${POSTGRES_USER:-postgres} password=${POSTGRES_PASSWORD:-postgres} dbname=${POSTGRES_DB:-estetika_mata_db} port=5432 sslmode=disable TimeZone=Asia/Jakarta"
       JWT_SECRET: ${JWT_SECRET:-estetika-mata-group-production-secret-key-change-me}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3002}
     volumes:
       - ./backend/uploads:/app/uploads
+    networks:
+      - emg-network
+
+  # Opsional: aktifkan dengan `docker compose --profile cloudflare up -d` jika memakai Cloudflare Tunnel seperti ikami/dr-aryo
+  emg-cloudflare:
+    image: cloudflare/cloudflared:latest
+    container_name: emg-cloudflare
+    restart: unless-stopped
+    profiles:
+      - cloudflare
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - emg-app
+    networks:
+      - emg-network
+
+networks:
+  emg-network:
+    name: emg-internal-network
+    driver: bridge
 
 volumes:
   emg_pgdata:
+    name: emg-postgres-data
